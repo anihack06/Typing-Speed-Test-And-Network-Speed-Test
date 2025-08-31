@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Typing Speed Test</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    background: linear-gradient(135deg, #d4fc79, #96e6a1); /* Soft green gradient */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+  }
+  .container {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    max-width: 650px;
+    width: 100%;
+    text-align: center;
+    animation: fadeIn 0.6s ease-in-out;
+  }
+  h1 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+    font-size: 1.8em;
+  }
+  .controls {
+    margin-bottom: 15px;
+  }
+  label {
+    margin: 0 10px;
+    display: inline-block;
+    background: #f8f9fa;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.95em;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  }
+  select, input[type="number"] {
+    margin-left: 6px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    outline: none;
+  }
+  #quote {
+    font-size: 1.2em;
+    margin: 15px 0;
+    line-height: 1.6;
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 10px;
+    min-height: 60px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
+    text-align: left;
+  }
+  .correct { color: #28a745; font-weight: bold; }
+  .incorrect { color: #dc3545; font-weight: bold; }
+  textarea {
+    width: 100%;
+    height: 100px;
+    font-size: 1em;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    resize: none;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.1);
+    transition: border 0.3s;
+  }
+  textarea:focus {
+    border-color: #66bb6a;
+  }
+  #liveWPM, #countdown {
+    margin-top: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+  }
+  #countdown { color: #e74c3c; }
+  #result, #feedback {
+    margin-top: 15px;
+    font-size: 1.2em;
+    font-weight: bold;
+  }
+  button {
+    margin-top: 15px;
+    padding: 10px 18px;
+    font-size: 1em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: #4CAF50;
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  button:hover {
+    background: #43a047;
+    transform: translateY(-2px);
+  }
+  #netSpeedBtn {
+    background: #007BFF;
+  }
+  #netSpeedBtn:hover {
+    background: #0069d9;
+  }
+  #credit {
+    margin-top: 15px;
+    font-size: 0.85em;
+    color: #555;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 5px 12px;
+    border-radius: 6px;
+    display: inline-block;
+    font-style: italic;
+  }
+  @keyframes fadeIn {
+    from {opacity: 0; transform: scale(0.95);}
+    to {opacity: 1; transform: scale(1);}
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Typing Speed Test</h1>
+
+  <!-- Mode selection -->
+  <div class="controls">
+    <label>
+      Mode:
+      <select id="mode">
+        <option value="words">Word Count</option>
+        <option value="time">Time Limit</option>
+      </select>
+    </label>
+    <label id="wordCountLabel">
+      Words:
+      <input type="number" id="wordCount" value="10" min="5" max="100">
+    </label>
+    <label id="timeLimitLabel" class="hidden">
+      Time (seconds):
+      <input type="number" id="timeLimit" value="30" min="10" max="300">
+    </label>
+  </div>
+
+  <div id="quote"></div>
+  <textarea id="input" placeholder="Start typing here..." disabled></textarea>
+  <div id="liveWPM">Live WPM: 0</div>
+  <div id="countdown" class="hidden"></div>
+  <div id="result"></div>
+  <div id="feedback"></div>
+
+  <button id="startBtn">Start Test</button>
+  <br>
+  <button id="netSpeedBtn" class="hidden" onclick="window.open('https://fast.com', '_blank')">Check Network Speed</button>
+
+  <div id="credit">⚡ Powered by Anu</div>
+</div>
+
+<script>
+const quotes = [
+  "The quick brown fox jumps over the lazy dog.",
+  "Typing speed tests are fun and challenging.",
+  "Practice makes perfect when learning to type.",
+  "JavaScript makes interactive web pages possible.",
+  "Coding every day improves your skills."
+];
+
+let startTime, timerRunning = false, countdownInterval;
+let mode = "words", targetWords = 10, targetTime = 30;
+
+const quoteEl = document.getElementById('quote');
+const inputEl = document.getElementById('input');
+const resultEl = document.getElementById('result');
+const feedbackEl = document.getElementById('feedback');
+const liveWPMEl = document.getElementById('liveWPM');
+const countdownEl = document.getElementById('countdown');
+const startBtn = document.getElementById('startBtn');
+const netSpeedBtn = document.getElementById('netSpeedBtn');
+const modeSelect = document.getElementById('mode');
+const wordCountInput = document.getElementById('wordCount');
+const timeLimitInput = document.getElementById('timeLimit');
+const wordCountLabel = document.getElementById('wordCountLabel');
+const timeLimitLabel = document.getElementById('timeLimitLabel');
+
+modeSelect.addEventListener('change', () => {
+  mode = modeSelect.value;
+  if (mode === "words") {
+    wordCountLabel.classList.remove('hidden');
+    timeLimitLabel.classList.add('hidden');
+    countdownEl.classList.add('hidden');
+  } else {
+    wordCountLabel.classList.add('hidden');
+    timeLimitLabel.classList.remove('hidden');
+  }
+});
+
+function getRandomQuote(wordsNeeded) {
+  let words = [];
+  while (words.length < wordsNeeded) {
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)].split(" ");
+    words = words.concat(randomQuote);
+  }
+  return words.slice(0, wordsNeeded).join(" ");
+}
+
+function startTest() {
+  mode = modeSelect.value;
+  targetWords = parseInt(wordCountInput.value);
+  targetTime = parseInt(timeLimitInput.value);
+
+  let textToType = mode === "words" ? getRandomQuote(targetWords) : quotes[Math.floor(Math.random() * quotes.length)];
+  quoteEl.innerHTML = textToType.split('').map(char => `<span>${char}</span>`).join('');
+
+  inputEl.value = '';
+  inputEl.disabled = false;
+  inputEl.focus();
+  resultEl.textContent = '';
+  feedbackEl.textContent = '';
+  liveWPMEl.textContent = 'Live WPM: 0';
+  netSpeedBtn.classList.add('hidden');
+  timerRunning = false;
+
+  if (mode === "time") {
+    countdownEl.classList.remove('hidden');
+    let timeLeft = targetTime;
+    countdownEl.textContent = `Time left: ${timeLeft}s`;
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+      timeLeft--;
+      countdownEl.textContent = `Time left: ${timeLeft}s`;
+      if (timeLeft <= 0) {
+        clearInterval(countdownInterval);
+        finishTest();
+      }
+    }, 1000);
+  } else {
+    countdownEl.classList.add('hidden');
+  }
+}
+
+function updateLiveWPM() {
+  const elapsedTime = (Date.now() - startTime) / 1000 / 60;
+  const wordsTyped = inputEl.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const wpm = elapsedTime > 0 ? Math.round(wordsTyped / elapsedTime) : 0;
+  liveWPMEl.textContent = `Live WPM: ${wpm}`;
+}
+
+function finishTest() {
+  clearInterval(countdownInterval);
+  const elapsedTime = (Date.now() - startTime) / 1000;
+  const wordsTyped = inputEl.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const wpm = Math.round((wordsTyped / elapsedTime) * 60);
+
+  const original = quoteEl.textContent;
+  let correctChars = 0;
+  for (let i = 0; i < inputEl.value.length; i++) {
+    if (inputEl.value[i] === original[i]) correctChars++;
+  }
+  const accuracy = Math.round((correctChars / original.length) * 100);
+
+  resultEl.textContent = `Final Speed: ${wpm} WPM | Accuracy: ${accuracy}%`;
+
+  if (wpm >= 60) {
+    feedbackEl.textContent = "🚀 Amazing speed! You're a pro!";
+  } else if (wpm >= 40) {
+    feedbackEl.textContent = "👍 Good job! Keep practicing to get even faster.";
+  } else {
+    feedbackEl.textContent = "💡 Keep practicing — you'll get there!";
+  }
+
+  inputEl.disabled = true;
+  netSpeedBtn.classList.remove('hidden');
+}
+
+inputEl.addEventListener('input', () => {
+  const arrayQuote = quoteEl.querySelectorAll('span');
+  const arrayValue = inputEl.value.split('');
+
+  if (!timerRunning && arrayValue.length > 0) {
+    startTime = Date.now();
+    timerRunning = true;
+  }
+
+  arrayQuote.forEach((charSpan, index) => {
+    const typedChar = arrayValue[index];
+    if (typedChar == null) {
+      charSpan.classList.remove('correct', 'incorrect');
+    } else if (typedChar === charSpan.textContent) {
+      charSpan.classList.add('correct');
+      charSpan.classList.remove('incorrect');
+    } else {
+      charSpan.classList.add('incorrect');
+      charSpan.classList.remove('correct');
+    }
+  });
+
+  if (timerRunning) updateLiveWPM();
+
+  if (mode === "words" && inputEl.value.trim().split(/\s+/).length >= targetWords) {
+    finishTest();
+  } else if (mode === "time" && inputEl.value === quoteEl.textContent) {
+    finishTest();
+  }
+});
+
+startBtn.addEventListener('click', startTest);
+</script>
+
+</body>
+</html>
